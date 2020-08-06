@@ -17,3 +17,57 @@ Now we modfiy the graph to add Kafka into the pipline. This time we want to sepa
 ![](images/producer.png)
 
 ![](images/consumer.png)
+
+> I also changed the terminal operator to wiretap operator which shows more message information.
+
+Now, by incorporating Kafka into our pipeline, we are flexbilbe enough to debug and test our pipeline.
+
+### 3. Produce sensor data
+Run the producer graph for a while, then stop it. The generated messages will be retained in Kafka. We stop its running because we do not want to run it indefinitely which will waste the kafka broker resource. The generated data is enough for our testing purpose. 
+
+### 4. Message delivery guarantee
+Now we want to see the message delivery guarantee the pipeline can provide using different configurations.
+
+Add more operators into the pipeline like below.
+
+![](images/consumer1.png)
+
+- "Wiretap 1" traces the output messages from Kafka directly.
+- "Message Operator" handles the receieved message and send the result to the downstream operator. It also has a debug port used for receieving a terminal signal.
+- "Wiretap 2" traces the outout messages ingested into HANA.
+- "Terminal" operator sends a signal to "Message Operator" to indicate the graph termination.
+
+> The debug port of "Message Operator" is for acceptting an input from the terminal operator, upon receieve the input, the "Message Operator" will terminte its execution and finally cause the graph dead. This is to simulate an error occur in the pipeline execution. as I mentioned before in an   
+
+The script code for the "Message Operator" like below:
+```
+var terminate = false;
+
+function sleep(millisecondsToWait) {
+  var now = new Date().getTime();
+  while(new Date().getTime() < now + millisecondsToWait) {}
+}
+
+
+function onInput(ctx,s) {
+    if(terminate) {
+        $.fail("unexpected value received");
+    }
+    sleep(5000);
+    $.output(s);
+}
+
+function onDebug(ctx, s) {
+    terminate = true;
+}
+
+$.setPortCallback("input",onInput);
+$.setPortCallback("debug",onDebug);
+```
+
+In the follong setctions, we will use the different configuration to see different Message delivery guarantee.
+
+#### 4.1. At most once delivery guarantee
+Config Kafka consumer like the below figure:
+
+![](images/KafkaConsumerAtMostOnceConfig.png)

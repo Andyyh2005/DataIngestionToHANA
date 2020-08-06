@@ -76,8 +76,6 @@ Run the graph. Observe the output of the twp wiretap operators. After a few mome
 
 ![](images/terminal.png)
 
-observe the output of the two wiretap operators.
-
 "Wiretap 1" output like below:
 
 ![](images/wiretap1.png)
@@ -86,9 +84,17 @@ observe the output of the two wiretap operators.
 
 ![](images/wiretap2.png)
 
-Now restart the faild graph, and run it for a while. We record the two wiretap output like below:
+Now restart the faild graph, and run it for a while. 
 
-Wiretap 1 | Wiretap 2
----|---
-row 1 col 1 | row 1 col 2
-row 2 col 1 | row 2 col 2
+To save space, I record the offset ranges of the two wiretap outputs in below table:
+
+run | Wiretap 1 | Wiretap 2 
+---|---|---
+first |0 - 12 | 0 - 10
+second |15 -27 | 15 -25
+
+From this table, we can see that some messges are lost between the two run. "Wiretap 1" lose messages at offset 13 and 14. "Wiretap 2" lose messges at offset 11, 12, 13, and 14. For this kind of recovery processing, we say the pipeline only processing message at most once.
+
+Now let's see of we can improve this guarantee.
+
+#### 4.2. At least once delivery guarantee

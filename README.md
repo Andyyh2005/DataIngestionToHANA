@@ -37,7 +37,7 @@ Add more operators into the pipeline like below.
 - "Wiretap 2" traces the outout messages ingested into HANA.
 - "Terminal" operator sends a signal to "Message Operator" to indicate the graph termination.
 
-> The debug port of "Message Operator" is for acceptting an input from the terminal operator, upon receieve the input, the "Message Operator" will terminte its execution and finally cause the graph dead. This is to simulate an error occur in the pipeline execution. as I mentioned before in an   
+> The debug port of "Message Operator" is for acceptting an input from the terminal operator, upon receieve the input, the "Message Operator" will terminte its execution and finally cause the graph dead. This is to simulate an error occur in the pipeline execution.   
 
 The script code for the "Message Operator" like below:
 ```
@@ -65,9 +65,30 @@ $.setPortCallback("input",onInput);
 $.setPortCallback("debug",onDebug);
 ```
 
-In the follong setctions, we will use the different configuration to see different Message delivery guarantee.
+In the following setctions, we will use the different configuration to see different Message delivery guarantee.
 
 #### 4.1. At most once delivery guarantee
 Config Kafka consumer like the below figure:
 
 ![](images/KafkaConsumerAtMostOnceConfig.png)
+
+Run the graph. Observe the output of the twp wiretap operators. After a few moment, enter something into the terminal window like below to simulate the pipeline runing fail. 
+
+![](images/terminal.png)
+
+observe the output of the two wiretap operators.
+
+"Wiretap 1" output like below:
+
+![](images/wiretap1.png)
+
+"Wiretap 2" output like below:
+
+![](images/wiretap2.png)
+
+Now restart the faild graph, and run it for a while. We record the two wiretap output like below:
+
+Wiretap 1 | Wiretap 2
+---|---
+row 1 col 1 | row 1 col 2
+row 2 col 1 | row 2 col 2

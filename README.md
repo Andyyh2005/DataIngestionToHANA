@@ -62,3 +62,72 @@ $.setPortCallback("debug",onDebug);
 - Wiretap opeator simply trace the messages ingested into HANA.
 
 Next we want to see what kind of message delivery guarantee the pipeline can provide with different configuration and settings.
+
+## 3. Message delivery guarantee
+Let's dig a little deeper on the message delivery guarantee and what it means to the applciaiton.
+
+### 4.1. At most once delivery guarantee
+Config Kafka consumer like the below figure:
+
+![](images/KafkaConsumerAtMostOnceConfig.png)
+
+Config Hana Client like below figure:
+
+![](images/HanaConfigAtMostOnce.png)
+
+Run the graph. After a few moment, enter something into the terminal window like below to signal the termination of the pipeline execution. 
+
+![](images/terminal.png)
+
+After the pipeline dead, observe the output of the wiretap operator like below:
+
+![](images/wiretapAtMostOnce.png)
+
+Check the HANA Database table to verify the ingested data:
+
+![](images/HanaOutputAtMostOnceFirst.png.png)
+
+Compare that difference between the comsumed offsets in Wiretap and HANA table. We can see HANA has processed the message at offset 4 while Wiretap operator at offset 3. This is because when the pipeline failed, the message has not yet sent to the wiretap operator.
+
+Note that the two offsets are not exactly the same thing:
+- The offset in Wiretap is an offset Kafka assgined to each message which is a monotonically increasing sequence number.
+- The offset (the counter variable) in HANA table is actually a field we added when the data generator generates every message. It is also a monotonically increasing sequence number like below code:
+```
+// This operator is needed to keep compatibility to the old datagenerator
+var counter = 0;
+
+getRandom = function(min, max) {
+    return Math.random() * (max - min) + min;
+};
+
+getRandomInt = function(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+generateData = function() {
+
+    // payload = "3,26.4,60.9,532.0,1.0,24.0,55.0,0,657.0,437.0,1388,5,-33,3.33"
+
+    var payload = getRandomInt(2, 6) + ","; // DeviceID
+    payload += getRandom(25, 26) + ","; // Temperatur
+    payload += getRandom(40, 60) + ","; // Humidity
+    payload += getRandom(500, 600) + ","; // CO2    
+    payload += getRandom(0.9, 1.1) + ","; // CO    
+    payload += getRandom(23, 25) + ","; // LPG    
+    payload += getRandom(50, 60) + ","; // Smoke  
+    payload += getRandomInt(0, 1) + ","; // Presence 
+    payload += getRandom(600, 800) + ","; // Light  
+    payload += getRandom(400, 500) + "\r\n"; // Sound  
+
+    return payload;
+};
+
+$.addTimer("500ms",doTick);
+
+function doTick(ctx) {
+    $.output(counter+","+generateData());
+    counter++;
+}
+
+```
+Although these two offsets are not the same thing, they are actually equivalent since the generated messages are sent to the same Kafka partition in an append-only fashon. We will use them to help us understand the message message delivery guarantee by comparing their value.  

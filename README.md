@@ -23,3 +23,42 @@ Now we modfiy the graph to add Kafka into the pipeline. This time we want to pla
 ![](images/producer.png)
 
 ![](images/consumerAtMostOnce.png)
+
+For debug and testing purpose, I added more operators into the consumer graph:
+- Message operator labeled as "Processing Data": A stream processor simply sleep some time to mimic a time-consuming message processing and forward the receiving message to downstream operator. Its processing code is as below:
+```
+function sleep(millisecondsToWait) {
+  var now = new Date().getTime();
+  while(new Date().getTime() < now + millisecondsToWait) {}
+}
+
+function onInput(ctx,s) {
+    sleep(5000);
+    $.output(s);
+}
+
+$.setPortCallback("input",onInput);
+```
+- "Terminal" operator: we will use it to send a signal indicating an unexpected error occured to the downstream operator.
+- Message Operator labeled as "Simulate Error" receieves message from HANA Client and forward it to downstream opeator. It also has a debug port used for receieving a terminal signal. After receieve the signal, the graph will be dead if it receieves a subsequent incoming message from HANA Client. Its code is as below:
+
+```
+var terminate = false;
+
+function onInput(ctx,s) {
+    if(terminate) {
+        $.fail("unexpected value received");
+    }
+    $.output(s);
+}
+
+function onDebug(ctx, s) {
+    terminate = true;
+}
+
+$.setPortCallback("input",onInput);
+$.setPortCallback("debug",onDebug);
+```
+- Wiretap opeator simply trace the messages ingested into HANA.
+
+Next we want to see what kind of message delivery guarantee the pipeline can provide with different configuration and settings.

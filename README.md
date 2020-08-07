@@ -1,3 +1,5 @@
+This blog will show you how to ingest stream(unbounded) data into SAP HANA in a fault-tolerant way using SAP Data Intelligence. We will start from a simple solution and improve it gradually until the processing meet the demand of our expectation. 
+
 ## 1. A simple data ingestion pipeline
 The below figure shows a simple example pipeline provided by SAP Data Intelligence. The data generator produces sensor data as a CSV string message. The message is loaded into SAP HANA and in parallel sent to a terminal, which you can use to see the generated data.
 
@@ -20,13 +22,4 @@ Now we modfiy the graph to add Kafka into the pipeline. This time we want to pla
 
 ![](images/producer.png)
 
-![](images/consumer.png)
-
-> I also changed the terminal operator to wiretap operator which shows more message information.
-
-Now, by incorporating Kafka into our pipeline, we are flexbilbe enough to debug and test our pipeline.
-
-## 3. Message delivery guarantee
-We want to see the different message delivery guarantees the pipeline can provide using different configuration.
-
-Add more operators into the pipeline like below.
+![](images/consumerAtMostOnce.png)

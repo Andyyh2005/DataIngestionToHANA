@@ -66,7 +66,7 @@ Next we want to see what kind of message delivery guarantee the pipeline can pro
 ## 3. Message delivery guarantee
 Let's dig a little deeper on the message delivery guarantee and what it means to the applciaiton.
 
-### 4.1. At most once delivery guarantee
+### 3.1. At most once delivery guarantee
 Config Kafka consumer like the below figure:
 
 ![](images/KafkaConsumerAtMostOnceConfig.png)
@@ -135,7 +135,7 @@ Now restart the faild graph, repeat above process and observe the result.
 To save space, I record the output offset ranges in below table(I will not list wiretap output since it is not relevant for the later discussion):
 
 Run | HANA Table
----|---|---
+---|---
 first | 0 - 4
 second | 8 - 11
 
@@ -143,7 +143,7 @@ From this table, we can see that some messges are lost between the two run. HANA
 
 Now let's see if we can improve this guarantee.
 
-### 4.2. At least once delivery guarantee
+### 3.2. At least once delivery guarantee
 From the above discussion, we can see the reason why there is message lose in the HANA table is that the message offset picked in the second run is not correct. The commited offset of the Kafka consumer did not reflect the actual position HANA table consumed.
 
 To fix this problem, the HANA Client operator needs to explicitly tell Kafka when it has finished processing a message. Without Kafka receiving an acknowledgment, the message offset in that partition will not get committed. This effectively keep the committed offset of the Kafka topic partition in sync with HANA table message consumption.
@@ -162,7 +162,7 @@ We changed the "Auto Commit" option from "True" to "False".
 
 Now repeat the same steps like we did before. I record the output offset ranges in below table:
 Run | HANA Table
----|---|---
+---|---
 first | 0 - 5
 second | 5 - 9
 
@@ -170,6 +170,40 @@ We can see that HANA table this time did not lose any messages. But the message 
 
 This duplicated message processing is caused by the message which has not been acknowledged by Kafka when the failure happend. Thus, Kafka will not commit that offset. When the graph restart, the message will be sent again.
 
-Next, we will discuss ways to do duplicate suppression.
+Next, we will discuss how to do duplicate suppression.
 
-### 4.3. Exactly once delivery guarantee
+### 3.3. Exactly once delivery guarantee
+One of the most effective approaches is to make the operation **idempotent** to ensure that it has the same effect, no matter whether it is executed once or multiple times. Solving the problem requires an end-to-end solution: we need an operation identifier that is passed all the way from the end-user client to the database.
+
+In our above case, we do not want the message as offset 5 inserted into the HANA table twice. Thus, we need to make the insert operation idempotent. 
+
+One solution is to change the insert mode of the HANA Client to “UPSERT” and for that create primary keys on the HANA table. Now the question is how to choose or generate an identifier as the primary key for that table.
+
+Recall that we mentioned above that the message has a field named counter which is a monotonically increasing sequence number. It actually uniquely identifies a message. So it is a natural fit for primary key in our case.
+
+Now we try to take the following steps hope to achieve out goal:
+1. drop the table and create a new table with below SQL statment and make the counter as primary key:
+
+```
+CREATE TABLE "ANDYTEST"."sensorData"(counter INTEGER, deviceid INTEGER, temperature DOUBLE, humidity DOUBLE, co2 DOUBLE, co DOUBLE, lpg DOUBLE, smoke DOUBLE, presence INTEGER, light DOUBLE, sound DOUBLE, PRIMARY KEY (counter));
+```
+2. Change the Kafka consumer configuration like below:
+
+![](images/KafkaConsumerExactlyOnceConfig.png)
+
+3. Change the HANA Client configuration like below:
+
+![](images/HanaConfigExactlyOnce.png)
+
+4. repeat the same steps like we did before. 
+
+I record the output offset ranges in below table:
+Run | HANA Table
+---|---
+first | 0 - 5
+second | 6 - 9
+
+Wow, we can see this time the messages are processed exactly once!
+
+## 4. Summary
+We have seen scenarios in which a message is lost, a message takes effect twice and a message takes effect exactly-once. Hope this will provide some inspiration on how to design a fault-tolerant stream processing pipeline in SAP Data Intelligence.

@@ -39,8 +39,8 @@ function onInput(ctx,s) {
 
 $.setPortCallback("input",onInput);
 ```
-- "Terminal" operator: we will use it to send a signal indicating an unexpected error occured to the downstream operator.
-- Message Operator labeled as "Simulate Error" receieves message from HANA Client and forward it to downstream opeator. It also has a debug port used for receieving a terminal signal. After receieve the signal, the graph will be dead if it receieves a subsequent incoming message from HANA Client. Its code is as below:
+- "Terminal" operator: We will use it to send a signal indicating an unexpected error occured to the downstream operator.
+- Message Operator labeled as "Simulate Error": It receieves message from HANA Client and forward it to downstream opeator. It also has a debug port used for receieving a terminal signal. After receieve the signal, the graph will be dead if it receieves a subsequent incoming message from HANA Client. Its code is as below:
 
 ```
 var terminate = false;
@@ -85,9 +85,9 @@ After the pipeline dead, observe the output of the wiretap operator like below:
 
 Check the HANA Database table to verify the ingested data:
 
-![](images/HanaOutputAtMostOnceFirst.png.png)
+![](images/HanaOutputAtMostOnceFirst.png)
 
-Compare that difference between the comsumed offsets in Wiretap and HANA table. We can see HANA has processed the message at offset 4 while Wiretap operator at offset 3. This is because when the pipeline failed, the message has not yet sent to the wiretap operator.
+Compare the difference between the comsumed offsets in Wiretap and HANA table. We can see HANA has processed the message at offset 4 while Wiretap operator at offset 3. This is because when the pipeline failed, the message has not yet sent to the wiretap operator.
 
 Note that the two offsets are not exactly the same thing:
 - The offset in Wiretap is an offset Kafka assgined to each message which is a monotonically increasing sequence number.
@@ -131,3 +131,6 @@ function doTick(ctx) {
 
 ```
 Although these two offsets are not the same thing, they are actually equivalent since the generated messages are sent to the same Kafka partition in an append-only fashon. We will use them to help us understand the message message delivery guarantee by comparing their value.  
+
+
+Now restart the faild graph, and run it for a while. 
